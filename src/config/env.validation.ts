@@ -14,6 +14,10 @@ export const envValidationSchema = Joi.object({
   DB_PASSWORD: Joi.string().required(),
   DB_NAME: Joi.string().required(),
 
+  // Database pool
+  DB_POOL_MAX: Joi.number().default(10),
+  DB_POOL_MIN: Joi.number().default(2),
+
   // Redis
   REDIS_URL: Joi.string().default('redis://localhost:6379'),
 

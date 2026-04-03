@@ -12,5 +12,12 @@ export const databaseConfig: TypeOrmModuleAsyncOptions = {
     database: configService.get<string>('DB_NAME'),
     autoLoadEntities: true,
     synchronize: false,
+    // Connection pool — evita esaurimento connessioni in produzione
+    extra: {
+      max: configService.get<number>('DB_POOL_MAX', 10),
+      min: configService.get<number>('DB_POOL_MIN', 2),
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 5_000,
+    },
   }),
 };

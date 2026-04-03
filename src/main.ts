@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import compression from 'compression';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -11,6 +12,17 @@ async function bootstrap() {
 
   // Security headers
   app.use(helmet());
+
+  // CORS — origini consentite da env, default aperto in development
+  const origins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
+    : true;
+  app.enableCors({
+    origin: origins,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  });
 
   // Gzip compression
   app.use(compression());
@@ -24,6 +36,9 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  // Global exception filter — formato errore consistente
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   const config = new DocumentBuilder()
     .setTitle('pingU API')
