@@ -47,21 +47,22 @@ export class SearchService {
       qb.andWhere('p.proposal_type = :proposalType', { proposalType: dto.proposalType });
     }
 
-    // Geo filter — Haversine (sostituito da PostGIS in futuro)
+    // Geo filter — PostGIS ST_DWithin con indice GIST (radiusKm → metri)
     if (dto.lat !== undefined && dto.lon !== undefined && dto.radiusKm) {
       qb.andWhere(
-        `(
-          p.latitude IS NOT NULL AND p.longitude IS NOT NULL AND
-          (
-            6371 * ACOS(
-              COS(RADIANS(:lat)) * COS(RADIANS(CAST(p.latitude AS DOUBLE PRECISION)))
-              * COS(RADIANS(CAST(p.longitude AS DOUBLE PRECISION)) - RADIANS(:lon))
-              + SIN(RADIANS(:lat)) * SIN(RADIANS(CAST(p.latitude AS DOUBLE PRECISION)))
-            )
-          ) <= :radiusKm
+        `p.location IS NOT NULL AND ST_DWithin(
+          p.location,
+          ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
+          :radiusM
         )`,
-        { lat: dto.lat, lon: dto.lon, radiusKm: dto.radiusKm },
+        { lat: dto.lat, lon: dto.lon, radiusM: dto.radiusKm * 1000 },
       );
+      if (!dto.q) {
+        qb.addOrderBy(
+          `ST_Distance(p.location, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography)`,
+          'ASC',
+        );
+      }
     }
 
     // Default ordering by date when no text query
@@ -103,20 +104,22 @@ export class SearchService {
       qb.andWhere('cat.id = :categoryId', { categoryId: dto.categoryId });
     }
 
+    // Geo filter — PostGIS ST_DWithin con indice GIST (radiusKm → metri)
     if (dto.lat !== undefined && dto.lon !== undefined && dto.radiusKm) {
       qb.andWhere(
-        `(
-          pct.latitude IS NOT NULL AND pct.longitude IS NOT NULL AND
-          (
-            6371 * ACOS(
-              COS(RADIANS(:lat)) * COS(RADIANS(CAST(pct.latitude AS DOUBLE PRECISION)))
-              * COS(RADIANS(CAST(pct.longitude AS DOUBLE PRECISION)) - RADIANS(:lon))
-              + SIN(RADIANS(:lat)) * SIN(RADIANS(CAST(pct.latitude AS DOUBLE PRECISION)))
-            )
-          ) <= :radiusKm
+        `pct.location IS NOT NULL AND ST_DWithin(
+          pct.location,
+          ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
+          :radiusM
         )`,
-        { lat: dto.lat, lon: dto.lon, radiusKm: dto.radiusKm },
+        { lat: dto.lat, lon: dto.lon, radiusM: dto.radiusKm * 1000 },
       );
+      if (!dto.q) {
+        qb.addOrderBy(
+          `ST_Distance(pct.location, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography)`,
+          'ASC',
+        );
+      }
     }
 
     if (!dto.q) {
