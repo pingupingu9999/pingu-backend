@@ -14,10 +14,6 @@ export class SearchService {
     private readonly tagRepository: Repository<PenguinCategoryTag>,
   ) {}
 
-  /**
-   * Search proposals with optional full-text, category filter, type filter,
-   * and Haversine geo-distance filter.
-   */
   async searchProposals(dto: SearchDto): Promise<{ data: Proposal[]; total: number }> {
     const page = dto.page ?? 0;
     const size = dto.size ?? 20;
@@ -32,26 +28,26 @@ export class SearchService {
       .andWhere('p.active = TRUE')
       .andWhere('p.deleted_at IS NULL');
 
-    // Full-text search on proposal name, description and tag custom_name
+    // Full-text search via PostgreSQL tsvector — uses GIN index
     if (dto.q) {
-      const term = `%${dto.q.toLowerCase()}%`;
       qb.andWhere(
-        '(LOWER(p.name) LIKE :term OR LOWER(p.description) LIKE :term OR LOWER(pct.custom_name) LIKE :term OR LOWER(pct.description) LIKE :term)',
-        { term },
+        `to_tsvector('italian', coalesce(p.name, '') || ' ' || coalesce(p.description, '')) @@ plainto_tsquery('italian', :q)`,
+        { q: dto.q },
+      ).addOrderBy(
+        `ts_rank(to_tsvector('italian', coalesce(p.name, '') || ' ' || coalesce(p.description, '')), plainto_tsquery('italian', :q))`,
+        'DESC',
       );
     }
 
-    // Category filter
     if (dto.categoryId) {
       qb.andWhere('cat.id = :categoryId', { categoryId: dto.categoryId });
     }
 
-    // Proposal type filter
     if (dto.proposalType) {
       qb.andWhere('p.proposal_type = :proposalType', { proposalType: dto.proposalType });
     }
 
-    // Geo filter (Haversine formula — works without PostGIS)
+    // Geo filter — Haversine (sostituito da PostGIS in futuro)
     if (dto.lat !== undefined && dto.lon !== undefined && dto.radiusKm) {
       qb.andWhere(
         `(
@@ -68,8 +64,12 @@ export class SearchService {
       );
     }
 
+    // Default ordering by date when no text query
+    if (!dto.q) {
+      qb.orderBy('p.created_date', 'DESC');
+    }
+
     const [data, total] = await qb
-      .orderBy('p.created_date', 'DESC')
       .skip(page * size)
       .take(size)
       .getManyAndCount();
@@ -77,9 +77,6 @@ export class SearchService {
     return { data, total };
   }
 
-  /**
-   * Search user tags (PenguinCategoryTag) — find people who offer a service.
-   */
   async searchTags(dto: SearchDto): Promise<{ data: PenguinCategoryTag[]; total: number }> {
     const page = dto.page ?? 0;
     const size = dto.size ?? 20;
@@ -91,11 +88,14 @@ export class SearchService {
       .where('pct.active = TRUE')
       .andWhere('pct.deleted_at IS NULL');
 
+    // Full-text search via PostgreSQL tsvector — uses GIN index
     if (dto.q) {
-      const term = `%${dto.q.toLowerCase()}%`;
       qb.andWhere(
-        '(LOWER(pct.custom_name) LIKE :term OR LOWER(pct.description) LIKE :term OR LOWER(ct.name) LIKE :term)',
-        { term },
+        `to_tsvector('italian', coalesce(pct.custom_name, '') || ' ' || coalesce(pct.description, '')) @@ plainto_tsquery('italian', :q)`,
+        { q: dto.q },
+      ).addOrderBy(
+        `ts_rank(to_tsvector('italian', coalesce(pct.custom_name, '') || ' ' || coalesce(pct.description, '')), plainto_tsquery('italian', :q))`,
+        'DESC',
       );
     }
 
@@ -119,8 +119,11 @@ export class SearchService {
       );
     }
 
+    if (!dto.q) {
+      qb.orderBy('pct.created_date', 'DESC');
+    }
+
     const [data, total] = await qb
-      .orderBy('pct.created_date', 'DESC')
       .skip(page * size)
       .take(size)
       .getManyAndCount();
