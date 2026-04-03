@@ -1,9 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { databaseConfig } from './config/database.config';
+import { envValidationSchema } from './config/env.validation';
+import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoryModule } from './modules/category/category.module';
 import { InteractionModule } from './modules/interaction/interaction.module';
@@ -19,8 +23,13 @@ import { WalletModule } from './modules/wallet/wallet.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validationSchema: envValidationSchema }),
+    ThrottlerModule.forRoot([
+      { name: 'global', ttl: 60_000, limit: 100 },
+      { name: 'auth', ttl: 60_000, limit: 10 },
+    ]),
     TypeOrmModule.forRootAsync(databaseConfig),
+    HealthModule,
     UsersModule,
     AuthModule,
     PenguinModule,
@@ -35,6 +44,9 @@ import { WalletModule } from './modules/wallet/wallet.module';
     NotificationModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}
