@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, Logger } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -29,10 +29,17 @@ import { WalletModule } from './modules/wallet/wallet.module';
     CacheModule.registerAsync({
       isGlobal: true,
       inject: [ConfigService],
-      useFactory: async (config: ConfigService) => ({
-        store: await redisStore({ url: config.get<string>('REDIS_URL') }),
-        ttl: 60_000, // default 60s
-      }),
+      useFactory: async (config: ConfigService) => {
+        const logger = new Logger('CacheModule');
+        try {
+          const store = await redisStore({ url: config.get<string>('REDIS_URL') });
+          logger.log('Redis cache connesso');
+          return { store, ttl: 60_000 };
+        } catch (err) {
+          logger.warn(`Redis non disponibile, fallback in-memory: ${(err as Error).message}`);
+          return { ttl: 60_000 };
+        }
+      },
     }),
     ThrottlerModule.forRoot([
       { name: 'global', ttl: 60_000, limit: 100 },
