@@ -14,6 +14,9 @@ export const envValidationSchema = Joi.object({
   DB_PASSWORD: Joi.string().required(),
   DB_NAME: Joi.string().required(),
 
+  // Redis
+  REDIS_URL: Joi.string().default('redis://localhost:6379'),
+
   // JWT
   JWT_SECRET: Joi.string().min(32).required(),
   JWT_REFRESH_SECRET: Joi.string().min(32).required(),

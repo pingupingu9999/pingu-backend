@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Interaction } from './entities/interaction.entity';
 import { ProposalInteraction } from './entities/proposal-interaction.entity';
 import { CreateInteractionDto } from './dto/create-interaction.dto';
 import { PenguinService } from '../penguin/penguin.service';
+
+const KEY_ALL = 'interactions:all';
+const TTL = 3_600_000; // 1 ora
 
 @Injectable()
 export class InteractionService {
@@ -14,10 +19,15 @@ export class InteractionService {
     @InjectRepository(ProposalInteraction)
     private readonly proposalInteractionRepository: Repository<ProposalInteraction>,
     private readonly penguinService: PenguinService,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) {}
 
   async findAll(): Promise<Interaction[]> {
-    return this.interactionRepository.find({ where: { active: true } });
+    const cached = await this.cache.get<Interaction[]>(KEY_ALL);
+    if (cached) return cached;
+    const data = await this.interactionRepository.find({ where: { active: true } });
+    await this.cache.set(KEY_ALL, data, TTL);
+    return data;
   }
 
   async findById(id: string): Promise<Interaction> {
@@ -28,7 +38,9 @@ export class InteractionService {
 
   async create(dto: CreateInteractionDto, actor: string): Promise<Interaction> {
     const interaction = this.interactionRepository.create({ ...dto, active: true, createdBy: actor });
-    return this.interactionRepository.save(interaction);
+    const saved = await this.interactionRepository.save(interaction);
+    await this.cache.del(KEY_ALL);
+    return saved;
   }
 
   async react(userId: string, proposalId: string, interactionId: string, emoji?: string): Promise<ProposalInteraction> {
