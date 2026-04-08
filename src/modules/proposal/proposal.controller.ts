@@ -64,6 +64,19 @@ export class ProposalController {
     return { data, meta: { page: pagination.page, size: pagination.size, total } };
   }
 
+  @Get('nearby')
+  @ApiOperation({ summary: 'Proposals whose radius intersects my search radius (geo-feed)' })
+  @ApiResponse({ status: 200, description: 'Geo-filtered proposal feed' })
+  @ApiResponse({ status: 400, description: 'Position or radius not set on your profile' })
+  async findNearby(@CurrentUser() user: User, @Query() pagination: PaginationDto) {
+    const [data, total] = await this.proposalService.findNearby(
+      user.id,
+      pagination.page,
+      pagination.size,
+    );
+    return { data, meta: { page: pagination.page, size: pagination.size, total } };
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a proposal by id' })
   @ApiResponse({ status: 200, description: 'Proposal detail' })

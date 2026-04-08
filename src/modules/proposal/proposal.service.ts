@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -78,6 +79,43 @@ export class ProposalService {
       .skip(page * size)
       .take(size)
       .getManyAndCount();
+  }
+
+  async findNearby(userId: string, page = 0, size = 20): Promise<[Proposal[], number]> {
+    const me = await this.penguinService.findByUserId(userId);
+    if (!me.latitude || !me.longitude || !me.radius) {
+      throw new BadRequestException('Imposta la tua posizione e il raggio di ricerca nel profilo');
+    }
+
+    // Due raggi si intersecano se: distanza(A, B) <= raggio_A + raggio_B
+    // Fallback posizione/raggio: proposal → penguinCategoryTag → penguin autore
+    const [items, total] = await this.proposalRepository
+      .createQueryBuilder('p')
+      .leftJoinAndSelect('p.penguinCategoryTag', 'pct')
+      .leftJoinAndSelect('pct.categoryTag', 'ct')
+      .leftJoin('pct.penguin', 'author')
+      .leftJoinAndSelect('p.attachments', 'att')
+      .where('p.is_private = false')
+      .andWhere('p.active = true')
+      .andWhere('p.deleted_at IS NULL')
+      .andWhere('author.id != :myId', { myId: me.id })
+      .andWhere(
+        `ST_DWithin(
+          ST_MakePoint(
+            COALESCE(p.longitude, pct.longitude, author.longitude),
+            COALESCE(p.latitude,  pct.latitude,  author.latitude)
+          )::geography,
+          ST_MakePoint(:myLon, :myLat)::geography,
+          (COALESCE(p.radius, pct.radius, author.radius) + :myRadius)
+        )`,
+        { myLon: me.longitude, myLat: me.latitude, myRadius: me.radius },
+      )
+      .orderBy('p.created_date', 'DESC')
+      .skip(page * size)
+      .take(size)
+      .getManyAndCount();
+
+    return [items, total];
   }
 
   async update(id: string, dto: UpdateProposalDto, userId: string): Promise<Proposal> {
