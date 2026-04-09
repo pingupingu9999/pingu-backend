@@ -6,12 +6,11 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from 'typeorm';
-import { AuditableEntity } from '../../../common/entities/auditable.entity';
 import { Penguin } from '../../penguin/entities/penguin.entity';
 
 @Entity({ name: 'pb_daily_limit' })
 @Unique('uq_daily_limit', ['penguinId', 'limitDate'])
-export class DailyLimit extends AuditableEntity {
+export class DailyLimit {
   @PrimaryGeneratedColumn({ name: 'id', type: 'bigint' })
   id: string;
 
