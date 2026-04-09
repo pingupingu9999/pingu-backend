@@ -73,9 +73,9 @@ export class ProposalService {
       .createQueryBuilder('p')
       .leftJoinAndSelect('p.penguinCategoryTag', 'pct')
       .leftJoinAndSelect('p.attachments', 'att')
-      .where('pct.penguin_id = :penguinId', { penguinId: penguin.id })
-      .andWhere('p.deleted_at IS NULL')
-      .orderBy('p.created_date', 'DESC')
+      .where('pct.penguinId = :penguinId', { penguinId: penguin.id })
+      .andWhere('p.deletedAt IS NULL')
+      .orderBy('p.createdDate', 'DESC')
       .skip(page * size)
       .take(size)
       .getManyAndCount();
@@ -95,9 +95,9 @@ export class ProposalService {
       .leftJoinAndSelect('pct.categoryTag', 'ct')
       .leftJoin('pct.penguin', 'author')
       .leftJoinAndSelect('p.attachments', 'att')
-      .where('p.is_private = false')
+      .where('p.isPrivate = false')
       .andWhere('p.active = true')
-      .andWhere('p.deleted_at IS NULL')
+      .andWhere('p.deletedAt IS NULL')
       .andWhere('author.id != :myId', { myId: me.id })
       .andWhere(
         `ST_DWithin(
@@ -110,7 +110,7 @@ export class ProposalService {
         )`,
         { myLon: me.longitude, myLat: me.latitude, myRadius: me.radius },
       )
-      .orderBy('p.created_date', 'DESC')
+      .orderBy('p.createdDate', 'DESC')
       .skip(page * size)
       .take(size)
       .getManyAndCount();
@@ -155,7 +155,7 @@ export class ProposalService {
       .createQueryBuilder('p')
       .leftJoin('p.penguinCategoryTag', 'pct')
       .where('p.id = :id', { id: proposal.id })
-      .andWhere('pct.penguin_id = :penguinId', { penguinId: penguin.id })
+      .andWhere('pct.penguinId = :penguinId', { penguinId: penguin.id })
       .getOne();
     if (!tag) throw new ForbiddenException();
   }
