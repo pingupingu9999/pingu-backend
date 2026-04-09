@@ -60,9 +60,9 @@ export class PingService {
     const cooldownDate = new Date(Date.now() - cooldownHours * 3600 * 1000);
     const recentPing = await this.pingRepository
       .createQueryBuilder('p')
-      .where('p.pinger_id = :pingerId', { pingerId: pinger.id })
-      .andWhere('p.pinged_id = :pingedId', { pingedId })
-      .andWhere('p.created_date > :cooldownDate', { cooldownDate })
+      .where('p.pingerId = :pingerId', { pingerId: pinger.id })
+      .andWhere('p.pingedId = :pingedId', { pingedId })
+      .andWhere('p.createdDate > :cooldownDate', { cooldownDate })
       .getOne();
     if (recentPing) {
       throw new BadRequestException('You already pinged this user recently, please wait 24h');

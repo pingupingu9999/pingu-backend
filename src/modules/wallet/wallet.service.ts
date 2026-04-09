@@ -48,7 +48,7 @@ export class WalletService {
     const result = await manager
       .createQueryBuilder(PenguinWallet, 'w')
       .select('COALESCE(SUM(w.quantity), 0)', 'balance')
-      .where('w.penguin_id = :penguinId', { penguinId })
+      .where('w.penguinId = :penguinId', { penguinId })
       .getRawOne<{ balance: string }>();
     const balance = parseFloat(result?.balance ?? '0');
 

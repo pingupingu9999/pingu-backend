@@ -24,9 +24,9 @@ export class SearchService {
       .leftJoinAndSelect('pct.categoryTag', 'ct')
       .leftJoinAndSelect('ct.category', 'cat')
       .leftJoinAndSelect('p.attachments', 'att')
-      .where('p.is_private = FALSE')
+      .where('p.isPrivate = FALSE')
       .andWhere('p.active = TRUE')
-      .andWhere('p.deleted_at IS NULL');
+      .andWhere('p.deletedAt IS NULL');
 
     // Full-text search via PostgreSQL tsvector — uses GIN index
     if (dto.q) {
@@ -44,7 +44,7 @@ export class SearchService {
     }
 
     if (dto.proposalType) {
-      qb.andWhere('p.proposal_type = :proposalType', { proposalType: dto.proposalType });
+      qb.andWhere('p.proposalType = :proposalType', { proposalType: dto.proposalType });
     }
 
     // Geo filter — PostGIS ST_DWithin con indice GIST (radiusKm → metri)
@@ -67,7 +67,7 @@ export class SearchService {
 
     // Default ordering by date when no text query
     if (!dto.q) {
-      qb.orderBy('p.created_date', 'DESC');
+      qb.orderBy('p.createdDate', 'DESC');
     }
 
     const [data, total] = await qb
@@ -87,7 +87,7 @@ export class SearchService {
       .leftJoinAndSelect('pct.categoryTag', 'ct')
       .leftJoinAndSelect('ct.category', 'cat')
       .where('pct.active = TRUE')
-      .andWhere('pct.deleted_at IS NULL');
+      .andWhere('pct.deletedAt IS NULL');
 
     // Full-text search via PostgreSQL tsvector — uses GIN index
     if (dto.q) {
@@ -123,7 +123,7 @@ export class SearchService {
     }
 
     if (!dto.q) {
-      qb.orderBy('pct.created_date', 'DESC');
+      qb.orderBy('pct.createdDate', 'DESC');
     }
 
     const [data, total] = await qb
