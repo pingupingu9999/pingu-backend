@@ -49,7 +49,8 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.APP_PORT || 3000;
+  // Railway inietta PORT automaticamente; APP_PORT come fallback locale
+  const port = process.env.PORT || process.env.APP_PORT || 3000;
   await app.listen(port);
 
   logger.log(`Application running on: http://localhost:${port}`);

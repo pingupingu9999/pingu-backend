@@ -12,6 +12,11 @@ export const databaseConfig: TypeOrmModuleAsyncOptions = {
     database: configService.get<string>('DB_NAME'),
     autoLoadEntities: true,
     synchronize: false,
+    // SSL richiesto da Railway Postgres in production
+    ssl:
+      configService.get<string>('NODE_ENV') === 'production'
+        ? { rejectUnauthorized: false }
+        : false,
     // Connection pool — evita esaurimento connessioni in produzione
     extra: {
       max: configService.get<number>('DB_POOL_MAX', 10),
