@@ -1,12 +1,15 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
+import type { Cache } from 'cache-manager';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
@@ -27,6 +30,8 @@ export class AuthService {
     private readonly walletService: WalletService,
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache,
   ) {}
 
   async validateUser(login: string, password: string): Promise<User | null> {
@@ -61,6 +66,15 @@ export class AuthService {
     await this.walletService.grantSignupBonus(penguin.id);
 
     return this.generateTokens(user);
+  }
+
+  async logout(token: string): Promise<void> {
+    const decoded = this.jwtService.decode(token) as { exp?: number };
+    if (!decoded?.exp) return;
+    const ttlMs = decoded.exp * 1000 - Date.now();
+    if (ttlMs > 0) {
+      await this.cacheManager.set(`blacklist:${token}`, true, ttlMs);
+    }
   }
 
   async refreshToken(token: string): Promise<TokenResponseDto> {
